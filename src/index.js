@@ -11,56 +11,64 @@ import registerServiceWorker from './registerServiceWorker';
 
 class Board extends React.Component {
 
-    constructor(props){
-        super(props);
-        this.state = {
-            // array of 9 nulls
-            squares: Array(9).fill(null),
-            xIsNext:true,
-        }
-    }
+    // we are taking out this part because state is now in Game 
+    // constructor(props){
+    //     super(props);
+    //     this.state = {
+    //         // array of 9 nulls
+    //         squares: Array(9).fill(null),
+    //         // xIsNext:true,
+    //     }
+    // }
 
-    putAnXorO(i){
-        // console.log(i)
-        // we are duplicating the array so we can keep track of history
-        const squares = this.state.squares.slice();
-        // we duplicat ethe Array, set the state of the square we clicked on to x
-        squares[i] = this.state.xIsNext? 'X': 'O';
+    // putAnXorO(i){
+    //     // console.log(i)
+    //     // we are duplicating the array so we can keep track of history
+    //     const squares = this.state.squares.slice();
+    //     // squares[i] this is so we can't click 2 times and replace x for o and vice vewrsa,
+    //     //  and also we cant keep playing after we have winner
+    //     if(calculateWinner[squares] || squares[i]){
 
-        // render the state to a new duplicated array where one of the null is set to "X"
-        this.setState({
-            squares:squares,
-            xIsNext: !this.state.xIsNext
-        });
-    }
+    //     }
+    //     // we duplicat ethe Array, set the state of the square we clicked on to x
+    //     squares[i] = this.state.xIsNext? 'X': 'O';
+
+    //     // render the state to a new duplicated array where one of the null is set to "X"
+    //     this.setState({
+    //         squares:squares,
+    //         xIsNext: !this.state.xIsNext
+    //     });
+    // }
 
 
     // define function renderSquare with one arg 
         renderSquare(i) {
             // return <Square blah={i}/>;
 
-          return <Square blah={ this.state.squares[i] } 
+          return <Square blah={ this.props.squares[i] } 
         //   i is index
-            onClick = { () => this.putAnXorO(i) }
+        //  onClick = { () => this.putAnXorO(i) }
+
+            onClick = { () => this.props.onClick(i) }
           />;
         }
       
         render() {
 
-            const winner = calculateWinner(this.state.squares);
-            let status;
-            if (winner){
-                status = `Winner: ${winner}`
-            } else {
-                status = `Next player: ${(this.state.xIsNext)? 'X' : 'O'}`;            
-            }
+            // const winner = calculateWinner(this.state.squares);
+            // let status;
+            // if (winner){
+            //     status = `Winner: ${winner}`
+            // } else {
+            //     status = `Next player: ${(this.state.xIsNext)? 'X' : 'O'}`;            
+            // }
 
 
           
            // returns value of passed arg
           return (
             <div>
-              <div className="status">{status}</div>
+              {/* <div className="status">{status}</div> */}
               <div className="board-row">
               {/* these numbers are 'i' */}
                 {this.renderSquare(0)}
@@ -132,15 +140,108 @@ class Square extends React.Component {
   // props can keep track of the state
 
   class Game extends React.Component {
+
+    constructor(props){
+        super(props);
+        this.state = {
+            history: [{ squares: Array(9).fill(null) }],
+            xIsNext: true,
+            stepNumber: 0,
+        }
+    }
+    // this is moved from Board to here
+    putAnXorO(i){
+        console.log('hello')
+        if(this.state.stepNumber !== this.state.history.length -1){
+            return;
+        }
+        const history = this.state.history.slice(0, this.state.stepNumber + 1);
+        const current = history[history.length -1];
+        const squares = current.squares.slice();
+       
+        // const squares = this.state.history[this.state.history.length - 1].squares.slice();
+        // squares[i] this is so we can't click 2 times and replace x for o and vice vewrsa,
+        // and also we cant keep playing after we have winner
+        if(calculateWinner[squares] || squares[i]){
+            return;
+        }
+        // we duplicat ethe Array, set the state of the square we clicked on to x
+        squares[i] = this.state.xIsNext? 'X': 'O';
+
+        // render the state to a new duplicated array where one of the null is set to "X"
+        this.setState({
+            history: this.state.history.concat([{ squares:squares }]), // try this with spread operator
+            xIsNext: !this.state.xIsNext,
+            stepNumber: history.length,
+        });
+    }
+
+    resetTheGame(){
+        this.setState({
+            history: [{ squares: Array(9).fill(null) }],
+            xIsNext: true,
+            stepNumber: 0,
+        })
+    }
+
+    showTheResetButton(){
+        const winner = calculateWinner(this.state.history[this.state.history.length - 1].squares);
+        if(winner || this.state.history.length === 10 ){
+            return (
+                <button onClick={ () => this.resetTheGame() }>
+                    Reset Game
+                </button>
+            )
+        }
+    }
+
+
+
+    jumpTo(step){
+        this.setState({
+            stepNumber:step,
+            xIsNext: ( step % 2 ) === 0,
+        })
+    }
+
+
     render() {
+        const history = this.state.history;
+        const current = history[this.state.stepNumber];
+        const winner = calculateWinner(current.squares);
+
+        const moves = history.map((step, move) => {
+            const desc = move ? `Go to move # ${move}` : `Go to game start`;
+            return (
+                <li key={move}>
+
+                    <button onClick={ () => this.jumpTo(move) }>
+                    { desc }
+                    </button>
+                </li>
+            )
+        })
+
+
+        let status;
+        if (winner){
+            status = `Winner: ${winner}`
+        } else {
+            status = `Next player: ${(this.state.xIsNext)? 'X' : 'O'}`;            
+        }
+
       return (
         <div className="game">
           <div className="game-board">
-            <Board />
+          { this.showTheResetButton() }
+            <Board 
+                squares = { current.squares }
+                onClick = { (i) => this.putAnXorO(i) } 
+            />
           </div>
           <div className="game-info">
-            <div>{/* status */}</div>
-            <ol>{/* TODO */}</ol>
+            <div> { status }</div>
+            <ol> { moves }</ol>
           </div>
         </div>
       );
